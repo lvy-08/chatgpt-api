@@ -64,13 +64,13 @@ public class XmlUtil {
      */
     public static <T> T xmlToBean(String resultXml, Class clazz) {
         // XStream对象设置默认安全防护，同时设置允许的类
-        XStream stream = new XStream(new DomDriver());
-        XStream.setupDefaultSecurity(stream);
-        stream.allowTypes(new Class[]{clazz});
-        stream.processAnnotations(new Class[]{clazz});
-        stream.setMode(XStream.NO_REFERENCES);
-        stream.alias("xml", clazz);
-        return (T) stream.fromXML(resultXml);
+        XStream stream = new XStream(new DomDriver());//指定使用DOM解析器来解析XML
+        XStream.setupDefaultSecurity(stream);//默认安全设置，在1.4.7版本之后是必须的，防止恶意的XML数据导致安全问题
+        stream.allowTypes(new Class[]{clazz});//指定允许反序列化的类
+        stream.processAnnotations(new Class[]{clazz});//启用XStream注解，让XStream处理类clazz上定义的XStream注解，使XML元素可以映射到类的不同字段
+        stream.setMode(XStream.NO_REFERENCES);//这种模式不会处理引用关系，即不会生成额外的XML元素来维护对象的引用关系。
+        stream.alias("xml", clazz);//将XML根元素映射到clazz类
+        return (T) stream.fromXML(resultXml);//①将XML字符串解析并转换为clazz类型的对象②返回泛型T，即传入的clazz类型
     }
 
 }

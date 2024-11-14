@@ -31,8 +31,8 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * @description 微信公众号，请求处理服务
  */
-@RestController
-@RequestMapping("/wx/portal/{appid}")
+@RestController//在Spring Boot应用程序中，该控制器类是单例的。这意味着，只要服务一直开启，该类的实例会一直存在，chatGPTMap也会一直存在。
+@RequestMapping("/wx/portal/{appid}")//Spring MVC的注解，将特定的URL映射到控制器的类或方法上。可放在类级别或方法级别。当放在类级别时，类中的每个方法都会以/wx/portal/{appid}为基础路径。
 public class WeiXinPortalController {
 
     private Logger logger = LoggerFactory.getLogger(WeiXinPortalController.class);
@@ -48,7 +48,7 @@ public class WeiXinPortalController {
     @Resource
     private ThreadPoolTaskExecutor taskExecutor;
 
-    private Map<String, String> chatGPTMap = new ConcurrentHashMap<>();
+    private Map<String, String> chatGPTMap = new ConcurrentHashMap<>();//线程安全的集合，支持并发操作，即不同的请求可以同时访问和更新chatGptMap中的数据
 
     public WeiXinPortalController() {
         // 1. 配置文件【可以联系小傅哥获取开发需要的 apihost、apikey】
@@ -74,7 +74,7 @@ public class WeiXinPortalController {
      * nonce     微信端发来的随机字符串
      * echostr   微信端发来的验证字符串
      */
-    @GetMapping(produces = "text/plain;charset=utf-8")
+    @GetMapping(produces = "text/plain;charset=utf-8")// /wx/portal/{appid}会映射到到validate方法（get请求）
     public String validate(@PathVariable String appid,
                            @RequestParam(value = "signature", required = false) String signature,
                            @RequestParam(value = "timestamp", required = false) String timestamp,
@@ -82,7 +82,7 @@ public class WeiXinPortalController {
                            @RequestParam(value = "echostr", required = false) String echostr) {
         try {
             logger.info("微信公众号验签信息{}开始 [{}, {}, {}, {}]", appid, signature, timestamp, nonce, echostr);
-            if (StringUtils.isAnyBlank(signature, timestamp, nonce, echostr)) {
+            if (StringUtils.isAnyBlank(signature, timestamp, nonce, echostr)) {//检查多个字符串是否为空白
                 throw new IllegalArgumentException("请求参数非法，请核实!");
             }
             boolean check = weiXinValidateService.checkSign(signature, timestamp, nonce);
@@ -100,20 +100,20 @@ public class WeiXinPortalController {
     /**
      * 此处是处理微信服务器的消息转发的
      */
-    @PostMapping(produces = "application/xml; charset=UTF-8")
+    @PostMapping(produces = "application/xml; charset=UTF-8")//注解表示该方法接收 HTTP POST 请求，并且返回 XML 格式的响应，字符编码为 UTF-8
     public String post(@PathVariable String appid,
-                       @RequestBody String requestBody,
+                       @RequestBody String requestBody,//可以使用字符串获取请求体
                        @RequestParam("signature") String signature,
                        @RequestParam("timestamp") String timestamp,
                        @RequestParam("nonce") String nonce,
                        @RequestParam("openid") String openid,
-                       @RequestParam(name = "encrypt_type", required = false) String encType,
+                       @RequestParam(name = "encrypt_type", required = false) String encType,//required = false,表示参数可选，如果请求没有，spring不会报错
                        @RequestParam(name = "msg_signature", required = false) String msgSignature) {
         try {
             logger.info("接收微信公众号信息请求{}开始 {}", openid, requestBody);
             MessageTextEntity message = XmlUtil.xmlToBean(requestBody, MessageTextEntity.class);
-            // 异步任务
-            if (chatGPTMap.get(message.getContent().trim()) == null || "NULL".equals(chatGPTMap.get(message.getContent().trim()))) {
+            // 异步任务。
+            if (chatGPTMap.get(message.getContent().trim()) == null || "NULL".equals(chatGPTMap.get(message.getContent().trim()))) {//.trim()去除字符串开头和结尾的空白字符，是一个新的字符串，不会改变旧字符串
                 // 反馈信息[文本]
                 MessageTextEntity res = new MessageTextEntity();
                 res.setToUserName(openid);
@@ -152,7 +152,7 @@ public class WeiXinPortalController {
     @Deprecated
     public void doChatGPTTask(String content) {
         chatGPTMap.put(content, "NULL");
-        taskExecutor.execute(() -> {
+        taskExecutor.execute(() -> {//在另一个线程中执行请求，即异步处理，方法立即返回，不等待 ChatGPT 的响应结果
             // OpenAI 请求
             // 1. 创建参数
             ChatCompletionRequest chatCompletion = ChatCompletionRequest
@@ -168,7 +168,7 @@ public class WeiXinPortalController {
                 messages.append(e.getMessage().getContent());
             });
 
-            chatGPTMap.put(content, messages.toString());
+            chatGPTMap.put(content, messages.toString());//有可能拿不到chatgpt返回的数据
         });
     }
 
